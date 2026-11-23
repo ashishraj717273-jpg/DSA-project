@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart College Management & Student Administration Dashboard - RISU</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- External CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- TOP NAVIGATION HEADER -->
+    <header class="app-header">
+        <div class="header-left">
+            <div class="college-badge">RISU</div>
+            <div class="brand-text">
+                <h1>Smart College Management & Student Administration System</h1>
+                <p>Applied DSA Architecture (HashMap &bull; Min-Heap &bull; FIFO Queue &bull; LIFO Stack) &bull; Rungta International Skills University, Bhilai</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <button class="btn btn-outline" onclick="openModal('enqueueModal')">+ Enqueue Admission</button>
+            <button class="btn btn-primary" onclick="openModal('studentModal')">+ Add Student</button>
+            <button class="btn btn-secondary" onclick="refreshData()" title="Reload live data">&#x21bb; Refresh</button>
+        </div>
+    </header>
+
+    <!-- MAIN DASHBOARD CONTAINER -->
+    <main class="dashboard-container">
+
+        <!-- LIFO UNDO AUDIT BAR -->
+        <section class="undo-audit-bar">
+            <div class="undo-info">
+                <span class="badge badge-indigo">LIFO STACK O(1)</span>
+                <span class="undo-message" id="lastActionText">Top: System boot & pre-loaded catalog indexed.</span>
+            </div>
+            <button class="btn btn-warning btn-sm" onclick="triggerUndo()">
+                &#x21a9; Undo Last Action (LIFO Stack Rollback)
+            </button>
+        </section>
+
+        <!-- KPI SUMMARY CARDS -->
+        <section class="kpi-grid">
+            <div class="kpi-card card-primary">
+                <div class="kpi-header">
+                    <span class="kpi-title">Enrolled Students</span>
+                    <span class="kpi-tag">HashMap O(1)</span>
+                </div>
+                <div class="kpi-value" id="kpiTotalStudents">--</div>
+                <div class="kpi-subtitle">Direct Constant-Time Keyed Registry</div>
+            </div>
+
+            <div class="kpi-card card-danger">
+                <div class="kpi-header">
+                    <span class="kpi-title">Attendance Alerts (&lt; 75%)</span>
+                    <span class="kpi-tag">Min-Heap O(1)</span>
+                </div>
+                <div class="kpi-value text-danger" id="kpiLowAttendance">--</div>
+                <div class="kpi-subtitle" id="kpiCriticalDesc">Root Peek: Calculating...</div>
+            </div>
+
+            <div class="kpi-card card-warning">
+                <div class="kpi-header">
+                    <span class="kpi-title">Pending Admissions</span>
+                    <span class="kpi-tag">FIFO Queue</span>
+                </div>
+                <div class="kpi-value text-warning" id="kpiQueueDepth">--</div>
+                <div class="kpi-subtitle">Sequential Arrival Buffer</div>
+            </div>
+
+            <div class="kpi-card card-success">
+                <div class="kpi-header">
+                    <span class="kpi-title">Undo History Depth</span>
+                    <span class="kpi-tag">LIFO Stack</span>
+                </div>
+                <div class="kpi-value text-success" id="kpiStackDepth">--</div>
+                <div class="kpi-subtitle">Reversible Snapshot Rollbacks</div>
+            </div>
+        </section>
+
+        <!-- TWO COLUMN WORKSPACE (FIFO QUEUE & MIN-HEAP ALERTS) -->
+        <section class="operations-grid">
+            
+            <!-- FIFO ADMISSION QUEUE PANEL -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title-group">
+                        <h2 class="panel-title">FIFO Admission Queue</h2>
+                        <span class="badge badge-warning" id="queueBadge">0 Pending</span>
+                    </div>
+                    <button class="btn btn-success btn-sm" onclick="processNextAdmission()">
+                        &#x2713; Process Next (FIFO Dequeue)
+                    </button>
+                </div>
+                <p class="panel-instruction">Incoming applicant queue processed strictly in arrival order (First-In, First-Out) without starvation.</p>
+                <div class="queue-list" id="queueListContainer">
+                    <div class="empty-state">Loading queue items...</div>
+                </div>
+            </div>
+
+            <!-- MIN-HEAP LOW ATTENDANCE ALERTS PANEL -->
+            <div class="panel">
+                <div class="panel-header">
+                    <div class="panel-title-group">
+                        <h2 class="panel-title">Min-Heap Attendance Alerts (&lt; 75%)</h2>
+                        <span class="badge badge-danger" id="alertBadge">0 Critical</span>
+                    </div>
+                    <span class="dsa-tag">Root Node = Lowest Attendance</span>
+                </div>
+                <p class="panel-instruction">Students below mandatory 75% attendance surfaced automatically in O(1) peek time via priority heap.</p>
+                <div class="alert-list" id="alertListContainer">
+                    <div class="empty-state">Loading attendance alerts...</div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- FULL STUDENT DIRECTORY (HASHMAP O(1) CATALOG) -->
+        <section class="panel directory-panel">
+            <div class="panel-header">
+                <div>
+                    <h2 class="panel-title">Enrolled Student Directory</h2>
+                    <p class="panel-instruction">Indexed via Hash Table for instant O(1) lookups. Click on any student's attendance to edit.</p>
+                </div>
+                <div class="search-filter-controls">
+                    <input type="text" class="search-box" id="searchInput" placeholder="Search by Student ID, Name, or Department..." oninput="filterTable()">
+                    <select class="dept-filter" id="deptFilter" onchange="filterTable()">
+                        <option value="">All Departments</option>
+                        <option value="Computer Science">Computer Science</option>
+                        <option value="Computer Science (AIML)">Computer Science (AIML)</option>
+                        <option value="Information Technology">Information Technology</option>
+                        <option value="Electronics & Comm">Electronics & Comm</option>
+                        <option value="Mechanical Engineering">Mechanical Engineering</option>
+                        <option value="Civil Engineering">Civil Engineering</option>
+                        <option value="Electrical Engineering">Electrical Engineering</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="data-table">
+                    <thead>
+                        <tr>
+                            <th>Student ID</th>
+                            <th>Student Name</th>
+                            <th>Department</th>
+                            <th>Sem</th>
+                            <th>CGPA</th>
+                            <th>Attendance %</th>
+                            <th>Status Badge</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="studentTableBody">
+                        <tr>
+                            <td colspan="8" class="text-center">Loading student records...</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="app-footer">
+        <p>Smart College Management & Student Administration System &bull; Session 2026-27 &bull; School of Computer Science and Engineering &bull; Rungta International Skills University, Bhilai</p>
+    </footer>
+
+    <!-- MODAL: ENQUEUE ADMISSION -->
+    <div class="modal-backdrop" id="enqueueModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Enqueue New Admission Application (FIFO Queue)</h3>
+                <button class="modal-close" onclick="closeModal('enqueueModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Applicant Full Name</label>
+                    <input type="text" class="form-input" id="appApplicantName" placeholder="e.g. Kushal Sinha">
+                </div>
+                <div class="form-group">
+                    <label>Target Department</label>
+                    <select class="form-input" id="appDepartment">
+                        <option value="Computer Science">Computer Science</option>
+                        <option value="Computer Science (AIML)">Computer Science (AIML)</option>
+                        <option value="Information Technology">Information Technology</option>
+                        <option value="Electronics & Comm">Electronics & Comm</option>
+                        <option value="Mechanical Engineering">Mechanical Engineering</option>
+                        <option value="Civil Engineering">Civil Engineering</option>
+                        <option value="Electrical Engineering">Electrical Engineering</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Qualifying Entrance Score (%)</label>
+                    <input type="number" class="form-input" id="appScore" placeholder="88.5" min="40" max="100" step="0.1">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-dark" onclick="closeModal('enqueueModal')">Cancel</button>
+                <button class="btn btn-warning" onclick="submitEnqueue()">Enqueue Application</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: ADD STUDENT DIRECT -->
+    <div class="modal-backdrop" id="studentModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Add Student Record Direct (HashMap & Min-Heap)</h3>
+                <button class="modal-close" onclick="closeModal('studentModal')">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Student ID / Roll No (Unique Key)</label>
+                    <input type="text" class="form-input" id="newId" placeholder="e.g. STU115">
+                </div>
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" class="form-input" id="newName" placeholder="e.g. Harshita Rao">
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" class="form-input" id="newDept" placeholder="e.g. Computer Science">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Semester</label>
+                        <input type="number" class="form-input" id="newSem" value="2" min="1" max="8">
+                    </div>
+                    <div class="form-group">
+                        <label>CGPA</label>
+                        <input type="number" class="form-input" id="newCgpa" value="8.50" step="0.05" min="0" max="10">
+                    </div>
+                    <div class="form-group">
+                        <label>Attendance %</label>
+                        <input type="number" class="form-input" id="newAtt" value="82.0" step="0.5" min="0" max="100">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline-dark" onclick="closeModal('studentModal')">Cancel</button>
+                <button class="btn btn-primary" onclick="submitNewStudent()">Add to Registry</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- External JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
